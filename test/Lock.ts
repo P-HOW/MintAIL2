@@ -43,7 +43,7 @@ describe("Lock", function () {
       const { lock, lockedAmount } = await loadFixture(
         deployOneYearLockFixture
       );
-
+     // console.log(owner.address)
       expect(await ethers.provider.getBalance(lock.target)).to.equal(
         lockedAmount
       );
