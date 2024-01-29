@@ -2,80 +2,163 @@ pragma solidity ^0.5.16;
 
 // Inheritance
 import "./Owned.sol";
-
-// Internal references
 import "./Proxyable.sol";
 
-contract Proxy is Owned {
-    Proxyable public target;
+// Libraries
+import "./SafeDecimalMath.sol";
 
-    constructor(address _owner) public Owned(_owner) {}
+// Internal references
+import "./TokenState.sol";
 
-    function setTarget(Proxyable _target) external onlyOwner {
-        target = _target;
-        emit TargetUpdated(_target);
+contract ExternStateToken is Owned, Proxyable {
+    using SafeMath for uint;
+    using SafeDecimalMath for uint;
+
+    /* ========== STATE VARIABLES ========== */
+
+    /* Stores balances and allowances. */
+    TokenState public tokenState;
+
+    /* Other ERC20 fields. */
+    string public name;
+    string public symbol;
+    uint public totalSupply;
+    uint8 public decimals;
+
+    constructor(
+        address payable _proxy,
+        TokenState _tokenState,
+        string memory _name,
+        string memory _symbol,
+        uint _totalSupply,
+        uint8 _decimals,
+        address _owner
+    ) public Owned(_owner) Proxyable(_proxy) {
+        tokenState = _tokenState;
+
+        name = _name;
+        symbol = _symbol;
+        totalSupply = _totalSupply;
+        decimals = _decimals;
     }
 
-    function _emit(
-        bytes calldata callData,
-        uint numTopics,
-        bytes32 topic1,
-        bytes32 topic2,
-        bytes32 topic3,
-        bytes32 topic4
-    ) external onlyTarget {
-        uint size = callData.length;
-        bytes memory _callData = callData;
+    /* ========== VIEWS ========== */
 
-        assembly {
-        /* The first 32 bytes of callData contain its length (as specified by the abi).
-         * Length is assumed to be a uint256 and therefore maximum of 32 bytes
-         * in length. It is also leftpadded to be a multiple of 32 bytes.
-         * This means moving call_data across 32 bytes guarantees we correctly access
-         * the data itself. */
-            switch numTopics
-            case 0 {
-                log0(add(_callData, 32), size)
-            }
-            case 1 {
-                log1(add(_callData, 32), size, topic1)
-            }
-            case 2 {
-                log2(add(_callData, 32), size, topic1, topic2)
-            }
-            case 3 {
-                log3(add(_callData, 32), size, topic1, topic2, topic3)
-            }
-            case 4 {
-                log4(add(_callData, 32), size, topic1, topic2, topic3, topic4)
-            }
-        }
+    /**
+     * @notice Returns the ERC20 allowance of one party to spend on behalf of another.
+     * @param owner The party authorising spending of their funds.
+     * @param spender The party spending tokenOwner's funds.
+     */
+    function allowance(address owner, address spender) public view returns (uint) {
+        return tokenState.allowance(owner, spender);
     }
 
-    // solhint-disable no-complex-fallback
-    function() external payable {
-        // Mutable call setting Proxyable.messageSender as this is using call not delegatecall
-        target.setMessageSender(msg.sender);
-
-        assembly {
-            let free_ptr := mload(0x40)
-            calldatacopy(free_ptr, 0, calldatasize)
-
-        /* We must explicitly forward ether to the underlying contract as well. */
-            let result := call(gas, sload(target_slot), callvalue, free_ptr, calldatasize, 0, 0)
-            returndatacopy(free_ptr, 0, returndatasize)
-
-            if iszero(result) {
-                revert(free_ptr, returndatasize)
-            }
-            return(free_ptr, returndatasize)
-        }
+    /**
+     * @notice Returns the ERC20 token balance of a given account.
+     */
+    function balanceOf(address account) external view returns (uint) {
+        return tokenState.balanceOf(account);
     }
 
-    modifier onlyTarget {
-        require(Proxyable(msg.sender) == target, "Must be proxy target");
-        _;
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /**
+     * @notice Set the address of the TokenState contract.
+     * @dev This can be used to "pause" transfer functionality, by pointing the tokenState at 0x000..
+     * as balances would be unreachable.
+     */
+    function setTokenState(TokenState _tokenState) external optionalProxy_onlyOwner {
+        tokenState = _tokenState;
+        emitTokenStateUpdated(address(_tokenState));
     }
 
-    event TargetUpdated(Proxyable newTarget);
+    function _internalTransfer(
+        address from,
+        address to,
+        uint value
+    ) internal returns (bool) {
+        /* Disallow transfers to irretrievable-addresses. */
+        require(to != address(0) && to != address(this) && to != address(proxy), "Cannot transfer to this address");
+
+        // Insufficient balance will be handled by the safe subtraction.
+        tokenState.setBalanceOf(from, tokenState.balanceOf(from).sub(value));
+        tokenState.setBalanceOf(to, tokenState.balanceOf(to).add(value));
+
+        // Emit a standard ERC20 transfer event
+        emitTransfer(from, to, value);
+
+        return true;
+    }
+
+    /**
+     * @dev Perform an ERC20 token transfer. Designed to be called by transfer functions possessing
+     * the onlyProxy or optionalProxy modifiers.
+     */
+    function _transferByProxy(
+        address from,
+        address to,
+        uint value
+    ) internal returns (bool) {
+        return _internalTransfer(from, to, value);
+    }
+
+    /*
+     * @dev Perform an ERC20 token transferFrom. Designed to be called by transferFrom functions
+     * possessing the optionalProxy or optionalProxy modifiers.
+     */
+    function _transferFromByProxy(
+        address sender,
+        address from,
+        address to,
+        uint value
+    ) internal returns (bool) {
+        /* Insufficient allowance will be handled by the safe subtraction. */
+        tokenState.setAllowance(from, sender, tokenState.allowance(from, sender).sub(value));
+        return _internalTransfer(from, to, value);
+    }
+
+    /**
+     * @notice Approves spender to transfer on the message sender's behalf.
+     */
+    function approve(address spender, uint value) public optionalProxy returns (bool) {
+        address sender = messageSender;
+
+        tokenState.setAllowance(sender, spender, value);
+        emitApproval(sender, spender, value);
+        return true;
+    }
+
+    /* ========== EVENTS ========== */
+    function addressToBytes32(address input) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(input)));
+    }
+
+    event Transfer(address indexed from, address indexed to, uint value);
+    bytes32 internal constant TRANSFER_SIG = keccak256("Transfer(address,address,uint256)");
+
+    function emitTransfer(
+        address from,
+        address to,
+        uint value
+    ) internal {
+        proxy._emit(abi.encode(value), 3, TRANSFER_SIG, addressToBytes32(from), addressToBytes32(to), 0);
+    }
+
+    event Approval(address indexed owner, address indexed spender, uint value);
+    bytes32 internal constant APPROVAL_SIG = keccak256("Approval(address,address,uint256)");
+
+    function emitApproval(
+        address owner,
+        address spender,
+        uint value
+    ) internal {
+        proxy._emit(abi.encode(value), 3, APPROVAL_SIG, addressToBytes32(owner), addressToBytes32(spender), 0);
+    }
+
+    event TokenStateUpdated(address newTokenState);
+    bytes32 internal constant TOKENSTATEUPDATED_SIG = keccak256("TokenStateUpdated(address)");
+
+    function emitTokenStateUpdated(address newTokenState) internal {
+        proxy._emit(abi.encode(newTokenState), 1, TOKENSTATEUPDATED_SIG, 0, 0, 0);
+    }
 }
