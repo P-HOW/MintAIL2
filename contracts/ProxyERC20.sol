@@ -67,7 +67,6 @@ contract ProxyERC20 is Proxy, IERC20 {
         // Forward the ERC20 call to the target contract
         IERC20(address(target)).transfer(to, value);
 
-        // Event emitting will occur via Synthetix.Proxy._emit()
         return true;
     }
 
@@ -87,7 +86,6 @@ contract ProxyERC20 is Proxy, IERC20 {
         // Forward the ERC20 call to the target contract
         IERC20(address(target)).approve(spender, value);
 
-        // Event emitting will occur via Synthetix.Proxy._emit()
         return true;
     }
 
@@ -108,7 +106,6 @@ contract ProxyERC20 is Proxy, IERC20 {
         // Forward the ERC20 call to the target contract
         IERC20(address(target)).transferFrom(from, to, value);
 
-        // Event emitting will occur via Synthetix.Proxy._emit()
         return true;
     }
 }
