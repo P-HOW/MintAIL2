@@ -61,7 +61,7 @@ contract MAI is BaseMAI {
         // record minting event before mutation to token supply
         uint minterReward = _supplySchedule.recordMintEvent(supplyToMint);
 
-        // Set minted SNX balance to RewardEscrow's balance
+        // Set minted MAI balance to RewardEscrow's balance
         // Minus the minterReward and set balance of minter to add reward
         uint amountToDistribute = supplyToMint.sub(minterReward);
 
