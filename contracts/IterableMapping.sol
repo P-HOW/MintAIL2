@@ -2,19 +2,23 @@
 pragma solidity ^0.8.20;
 
 library IterableMapping {
-    // Iterable mapping from address to uint;
     struct Map {
-        address[] keys;
-        mapping(address => uint) values;
-        mapping(address => uint) indexOf;
-        mapping(address => bool) inserted;
+        bytes[] keys;
+        mapping(bytes => CoordinatorInfo) values;
+        mapping(bytes => uint) indexOf;
+        mapping(bytes => bool) inserted;
     }
 
-    function get(Map storage map, address key) public view returns (uint) {
+    struct CoordinatorInfo {
+        address ownerAddress;
+        address[] functionAddresses;
+    }
+
+    function get(Map storage map, bytes memory key) public view returns (CoordinatorInfo storage) {
         return map.values[key];
     }
 
-    function getKeyAtIndex(Map storage map, uint index) public view returns (address) {
+    function getKeyAtIndex(Map storage map, uint index) public view returns (bytes memory) {
         return map.keys[index];
     }
 
@@ -22,7 +26,7 @@ library IterableMapping {
         return map.keys.length;
     }
 
-    function set(Map storage map, address key, uint val) public {
+    function set(Map storage map, bytes memory key, CoordinatorInfo memory val) public {
         if (map.inserted[key]) {
             map.values[key] = val;
         } else {
@@ -33,7 +37,7 @@ library IterableMapping {
         }
     }
 
-    function remove(Map storage map, address key) public {
+    function remove(Map storage map, bytes memory key) public {
         if (!map.inserted[key]) {
             return;
         }
@@ -42,7 +46,7 @@ library IterableMapping {
         delete map.values[key];
 
         uint index = map.indexOf[key];
-        address lastKey = map.keys[map.keys.length - 1];
+        bytes memory lastKey = map.keys[map.keys.length - 1];
 
         map.indexOf[lastKey] = index;
         delete map.indexOf[key];
