@@ -12,7 +12,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IFeePool.sol";
 import "./interfaces/IRewardsDistribution.sol";
 
-// https://docs.synthetix.io/contracts/source/contracts/rewardsdistribution
 contract RewardsDistribution is Owned, IRewardsDistribution {
     using SafeMath for uint;
     using SafeDecimalMath for uint;
@@ -43,8 +42,8 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
     DistributionData[] public distributions;
 
     /**
-     * @dev _authority maybe the underlying synthetix contract.
-     * Remember to set the authority on a synthetix upgrade
+     * @dev _authority maybe the underlying coordinator contract.
+     * Remember to set the authority on a coordinator upgrade
      */
     constructor(
         address _owner,
@@ -91,7 +90,7 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
      * @param destination An address to send rewards tokens too
      * @param amount The amount of rewards tokens to send
      */
-    function addRewardDistribution(address destination, uint amount) external onlyOwner returns (bool) {
+    function addRewardDistribution(address destination, uint amount) external onlyAuthority returns (bool) {
         require(destination != address(0), "Cant add a zero address");
         require(amount != 0, "Cant add a zero amount");
 
@@ -107,7 +106,7 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
      * so it will no longer be included in the call to distributeRewards()
      * @param index The index of the DistributionData to delete
      */
-    function removeRewardDistribution(uint index) external onlyOwner {
+    function removeRewardDistribution(uint index) external onlyAuthority {
         require(index <= distributions.length - 1, "index out of bounds");
 
         // shift distributions indexes across
@@ -132,7 +131,7 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
         uint index,
         address destination,
         uint amount
-    ) external onlyOwner returns (bool) {
+    ) external onlyAuthority returns (bool) {
         require(index <= distributions.length - 1, "index out of bounds");
 
         distributions[index].destination = destination;
@@ -145,7 +144,7 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
         require(amount > 0, "Nothing to distribute");
         require(msg.sender == authority, "Caller is not authorised");
         require(rewardEscrow != address(0), "RewardEscrow is not set");
-        require(synthetixProxy != address(0), "SynthetixProxy is not set");
+        require(MAIProxy != address(0), "SynthetixProxy is not set");
         require(feePoolProxy != address(0), "FeePoolProxy is not set");
         require(
             IERC20(MAIProxy).balanceOf(address(this)) >= amount,
@@ -182,6 +181,11 @@ contract RewardsDistribution is Owned, IRewardsDistribution {
      */
     function distributionsLength() external view returns (uint) {
         return distributions.length;
+    }
+
+    modifier onlyAuthority() {
+        require(msg.sender == authority, "Caller is not the authority");
+        _;
     }
 
     /* ========== Events ========== */
