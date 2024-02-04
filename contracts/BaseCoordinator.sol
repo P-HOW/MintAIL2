@@ -90,9 +90,14 @@ contract BaseCoordinator is Lock, Owned, MixinResolver {
         return false;
     }
 
-
-
-
+    function getCoordinatorIndex() internal view returns (uint) {
+        for (uint i = 0; i < coordinators.length; i++) {
+            if (coordinators[i].ownerAddress == msg.sender) {
+                return i;
+            }
+        }
+        revert("Caller is not the owner of any coordinator");
+    }
 
 
 }

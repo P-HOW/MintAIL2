@@ -118,12 +118,78 @@ contract Coordinator is BaseCoordinator {
         revert("Coordinator with the given address not found");
     }
 
+    function replaceFunctionAddress(address oldAddress, address newAddress) public onlyOwner {
+        require(isCoordinatorAddress(oldAddress), "Old address is not a coordinator function address");
+
+        for (uint i = 0; i < coordinators.length; i++) {
+            for (uint j = 0; j < coordinators[i].functionAddresses.length; j++) {
+                if (coordinators[i].functionAddresses[j] == oldAddress) {
+                    coordinators[i].functionAddresses[j] = newAddress;
+                    return;
+                }
+            }
+        }
+        revert("Function address not found");
+    }
+
+    function deleteFunctionAddress(address _address) public onlyOwner {
+        require(isCoordinatorAddress(_address), "Address is not a coordinator function address");
+
+        for (uint i = 0; i < coordinators.length; i++) {
+            require(coordinators[i].functionAddresses.length > 1, "Cannot delete the only function address");
+            for (uint j = 0; j < coordinators[i].functionAddresses.length; j++) {
+                if (coordinators[i].functionAddresses[j] == _address) {
+                    // Remove the address by shifting elements
+                    for (uint k = j; k < coordinators[i].functionAddresses.length - 1; k++) {
+                        coordinators[i].functionAddresses[k] = coordinators[i].functionAddresses[k + 1];
+                    }
+                    coordinators[i].functionAddresses.pop();
+                    return;
+                }
+            }
+        }
+        revert("Function address not found");
+    }
+
+    function replaceFunctionAddress(address oldAddress, address newAddress) public {
+        uint coordinatorIndex = getCoordinatorIndex();
+
+        for (uint j = 0; j < coordinators[coordinatorIndex].functionAddresses.length; j++) {
+            if (coordinators[coordinatorIndex].functionAddresses[j] == oldAddress) {
+                coordinators[coordinatorIndex].functionAddresses[j] = newAddress;
+                return;
+            }
+        }
+        revert("Function address not found");
+    }
+
+    function deleteFunctionAddress(address _address) public {
+        uint coordinatorIndex = getCoordinatorIndex();
+        require(coordinators[coordinatorIndex].functionAddresses.length > 1, "Cannot delete the only function address");
+
+        for (uint j = 0; j < coordinators[coordinatorIndex].functionAddresses.length; j++) {
+            if (coordinators[coordinatorIndex].functionAddresses[j] == _address) {
+                for (uint k = j; k < coordinators[coordinatorIndex].functionAddresses.length - 1; k++) {
+                    coordinators[coordinatorIndex].functionAddresses[k] = coordinators[coordinatorIndex].functionAddresses[k + 1];
+                }
+                coordinators[coordinatorIndex].functionAddresses.pop();
+                return;
+            }
+        }
+        revert("Function address not found");
+    }
+
+    function addFunctionAddress(address _address) public {
+        uint coordinatorIndex = getCoordinatorIndex();
+        require(coordinators[coordinatorIndex].functionAddresses.length < 3, "Cannot have more than 3 function addresses");
+
+        coordinators[coordinatorIndex].functionAddresses.push(_address);
+    }
+
     modifier onlyCoordinator() {
         require(isCoordinatorAddress(msg.sender), "Caller is not a coordinator");
         _;
     }
-
-
 
 
 }
