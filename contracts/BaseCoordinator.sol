@@ -5,8 +5,9 @@ import "./Owned.sol";
 import "./MixinResolver.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/ILock.sol";
+import "./Lock.sol";
 
-contract BaseCoordinator is Owned, MixinResolver {
+contract BaseCoordinator is Lock, Owned, MixinResolver {
 
     bytes32 private constant CONTRACT_MAI = "MAI";
     bytes32 private constant CONTRACT_LOCK = "LockCoordinatorsV1";
@@ -17,9 +18,31 @@ contract BaseCoordinator is Owned, MixinResolver {
         address[] functionAddresses;
     }
 
-    CoordinatorInfo[] public coordinators;
+    struct Nominee {
+        CoordinatorInfo info;
+        uint256 voteCount;
+        uint256 nominationTime;
+    }
 
-    constructor(address _owner, address _resolver) public Owned(_owner) MixinResolver(_resolver) {}
+    CoordinatorInfo[] public coordinators;
+    Nominee[] public nominees;
+    uint256 public timeVotingNewCoordinator;
+    uint256 public percentageGettingElected;
+
+    constructor(
+        IERC20 _token,
+        address _lockOwner,
+        uint _unlockTime,
+        address _owner,
+        address _resolver
+    )
+    Lock(_token, _lockOwner, _unlockTime) // Initialize Lock
+    Owned(_owner) // Initialize Owned
+    MixinResolver(_resolver) // Initialize MixinResolver
+    public
+    {
+        // Additional initialization (if any)
+    }
 
     function resolverAddressesRequired() public view returns (bytes32[] memory addresses) {
         addresses = new bytes32[](1);
