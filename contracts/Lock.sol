@@ -56,5 +56,10 @@ contract Lock {
 
         emit Withdrawal(msg.sender, amount);
     }
-}
 
+    // Function to get the staked balance of an address
+    function getStakedBalance(address _user) public view returns (uint) {
+        return deposits[_user].amount;
+    }
+
+}
