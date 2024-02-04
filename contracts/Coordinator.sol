@@ -186,10 +186,21 @@ contract Coordinator is BaseCoordinator {
         coordinators[coordinatorIndex].functionAddresses.push(_address);
     }
 
+    function transferCoordinatorDeposit(address newAddress) public onlyCoordinator {
+        // Transfer the deposit to the new address
+        transferDeposit(newAddress);
+
+        // Update coordinator information in the list
+        uint coordinatorIndex = getCoordinatorIndex();
+        coordinators[coordinatorIndex].ownerAddress = newAddress;
+    }
+
     modifier onlyCoordinator() {
         require(isCoordinatorAddress(msg.sender), "Caller is not a coordinator");
         _;
     }
+
+
 
 
 }
