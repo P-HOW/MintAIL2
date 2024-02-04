@@ -81,6 +81,18 @@ contract BaseCoordinator is Lock, Owned, MixinResolver {
         return ILock(requireAndGetAddress(CONTRACT_LOCK));
     }
 
+    function isInFunctionAddresses(address _address, address[] memory functionAddresses) internal pure returns (bool) {
+        for (uint j = 0; j < functionAddresses.length; j++) {
+            if (functionAddresses[j] == _address) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+
+
 
 
 }
