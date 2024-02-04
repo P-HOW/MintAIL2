@@ -6,6 +6,7 @@ contract Lock {
     IERC20 public token;
     uint public unlockTime; // Duration in seconds
     address public owner;
+    bool internal locked = false;
 
     struct Deposit {
         uint amount;
@@ -16,12 +17,13 @@ contract Lock {
 
     event DepositMade(address indexed depositor, uint amount, uint unlockTime);
     event Withdrawal(address indexed withdrawer, uint amount);
+    event DepositTransferred(address indexed from, address indexed to, uint amount);
 
-    constructor(IERC20 _token, address _owner, uint _unlockTime) public {
-        token = _token;
+    constructor(address _owner, uint _unlockTime) public {
         owner = _owner;
         unlockTime = _unlockTime;
     }
+
 
     // Set unlock time in seconds (e.g., 1 day = 86400 seconds)
     function setUnlockTime(uint _durationInSeconds) public {
@@ -29,7 +31,7 @@ contract Lock {
         unlockTime = _durationInSeconds;
     }
 
-    function deposit(uint _amount) public {
+    function deposit(uint _amount) public noReentrant{
         require(_amount > 0, "Amount must be greater than 0");
         require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
 
@@ -45,21 +47,47 @@ contract Lock {
         emit DepositMade(msg.sender, _amount, depositUnlockTime);
     }
 
-    function withdraw() public {
+    function withdraw() internal noReentrant{
         require(block.timestamp >= deposits[msg.sender].unlockTime, "You can't withdraw yet");
         require(deposits[msg.sender].amount > 0, "No deposit to withdraw");
 
-        uint amount = deposits[msg.sender].amount;
+        uint totalAmount = deposits[msg.sender].amount;
+        uint amountToWithdraw = totalAmount.mul(999).div(1000); // 99.9% of the total amount
+
         deposits[msg.sender].amount = 0;
 
-        require(token.transfer(msg.sender, amount), "Transfer failed");
+        require(token.transfer(msg.sender, amountToWithdraw), "Transfer failed");
 
-        emit Withdrawal(msg.sender, amount);
+        emit Withdrawal(msg.sender, amountToWithdraw);
+    }
+
+    function transferDeposit(address newAddress) public noReentrant{
+        require(newAddress != address(0), "New address cannot be the zero address");
+        require(deposits[msg.sender].amount > 0, "No deposit to transfer");
+
+        // Store the deposit amount before resetting
+        uint depositAmount = deposits[msg.sender].amount;
+
+        // Reset the deposit of the original depositor
+        deposits[msg.sender] = Deposit(0, 0);
+
+        // Transfer the deposit details to the new address
+        deposits[newAddress] = Deposit(depositAmount, block.timestamp + unlockTime);
+
+        // Emit an event to record the transfer of deposit
+        emit DepositTransferred(msg.sender, newAddress, depositAmount);
     }
 
     // Function to get the staked balance of an address
     function getStakedBalance(address _user) public view returns (uint) {
         return deposits[_user].amount;
+    }
+
+    modifier noReentrant() {
+        require(!locked, "Race condition detected");
+        locked = true;
+        _;
+        locked = false;
     }
 
 }
