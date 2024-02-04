@@ -6,29 +6,29 @@ import "./MixinResolver.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/ILock.sol";
 import "./Lock.sol";
+import "openzeppelin-solidity-2.3.0/contracts/math/SafeMath.sol";
 
 contract BaseCoordinator is Lock, Owned, MixinResolver {
 
+    using SafeMath for uint;
+    using SafeMath for uint256;
     bytes32 public constant CONTRACT_MAI_PROXY = "MAI_PROXY";
     bytes32 public constant CONTRACT_LOCK = "LockCoordinatorsV1";
-    bool public  staking_initialized;
+    bool public staking_initialized;
+    uint public nominationPercentage = 1;
+
+    function setNominationPercentage(uint _percentage) public onlyOwner {
+        require(_percentage >= 1 && _percentage <= 100, "Percentage must be between 1 and 100");
+        nominationPercentage = _percentage;
+    }
 
     struct CoordinatorInfo {
-        string name; // Change to string
+        string name;
         address ownerAddress;
         address[] functionAddresses;
-    }
-
-    struct Nominee {
-        CoordinatorInfo info;
-        uint256 voteCount;
-        uint256 nominationTime;
-    }
+        uint stakedAmount;}
 
     CoordinatorInfo[] public coordinators;
-    Nominee[] public nominees;
-    uint256 public timeVotingNewCoordinator;
-    uint256 public percentageGettingElected;
 
     constructor(
         address _lockOwner,
@@ -56,6 +56,23 @@ contract BaseCoordinator is Lock, Owned, MixinResolver {
         addresses[1] = CONTRACT_LOCK;
     }
 
+    function isCoordinatorAddress(address _address) public view returns (bool) {
+        for (uint i = 0; i < coordinators.length; i++) {
+            // Check if the address is the owner address of a coordinator
+            if (coordinators[i].ownerAddress == _address) {
+                return true;
+            }
+
+            // Check if the address is one of the function addresses of a coordinator
+            for (uint j = 0; j < coordinators[i].functionAddresses.length; j++) {
+                if (coordinators[i].functionAddresses[j] == _address) {
+                    return true;
+                }
+            }
+        }
+        return false; // Address not found in any coordinators
+    }
+
     function maiTokenContract() internal view returns (IERC20) {
         return IERC20(requireAndGetAddress(CONTRACT_MAI_PROXY));
     }
@@ -64,35 +81,6 @@ contract BaseCoordinator is Lock, Owned, MixinResolver {
         return ILock(requireAndGetAddress(CONTRACT_LOCK));
     }
 
-    function addCoordinator(string memory _name, address _ownerAddress, address[] memory _functionAddresses) public onlyOwner {
-        require(_ownerAddress != address(0), "Owner address cannot be zero");
-        require(bytes(_name).length > 0, "Name cannot be empty");
 
-        CoordinatorInfo memory newCoordinator = CoordinatorInfo({
-            name: _name,
-            ownerAddress: _ownerAddress,
-            functionAddresses: _functionAddresses
-        });
-        coordinators.push(newCoordinator);
-    }
 
-    function getCoordinatorByAddress(address _ownerAddress) public view returns (string memory, address, address[] memory) {
-        for (uint i = 0; i < coordinators.length; i++) {
-            if (coordinators[i].ownerAddress == _ownerAddress) {
-                return (coordinators[i].name, coordinators[i].ownerAddress, coordinators[i].functionAddresses);
-            }
-        }
-        revert("Coordinator not found");
-    }
-
-    function getCoordinatorByName(string memory _name) public view returns (string memory, address, address[] memory) {
-        for (uint i = 0; i < coordinators.length; i++) {
-            if (keccak256(abi.encodePacked(coordinators[i].name)) == keccak256(abi.encodePacked(_name))) {
-                return (coordinators[i].name, coordinators[i].ownerAddress, coordinators[i].functionAddresses);
-            }
-        }
-        revert("Coordinator not found");
-    }
-
-    // ... rest of the contract ...
 }
