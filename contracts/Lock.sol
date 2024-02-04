@@ -31,7 +31,7 @@ contract Lock {
         unlockTime = _durationInSeconds;
     }
 
-    function deposit(uint _amount) public noReentrant{
+    function deposit(uint _amount) public {
         require(_amount > 0, "Amount must be greater than 0");
         require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
 
