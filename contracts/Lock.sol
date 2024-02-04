@@ -61,7 +61,7 @@ contract Lock {
         emit Withdrawal(msg.sender, amountToWithdraw);
     }
 
-    function transferDeposit(address newAddress) public noReentrant{
+    function transferDeposit(address newAddress) internal noReentrant{
         require(newAddress != address(0), "New address cannot be the zero address");
         require(deposits[msg.sender].amount > 0, "No deposit to transfer");
 
