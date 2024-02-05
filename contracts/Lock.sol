@@ -7,6 +7,7 @@ contract Lock {
     uint public unlockTime; // Duration in seconds
     address public owner;
     bool internal locked = false;
+    uint public rate = 999; // Variable to store the rate
 
     struct Deposit {
         uint amount;
@@ -31,6 +32,14 @@ contract Lock {
         unlockTime = _durationInSeconds;
     }
 
+    // Function to set the rate
+    function setRate(uint _rate) public {
+        require(msg.sender == owner, "Only owner can set rate");
+        require(_rate >= 1 && _rate <= 1000, "Rate must be between 1 and 1000");
+        rate = _rate;
+    }
+
+
     function deposit(uint _amount) public {
         require(_amount > 0, "Amount must be greater than 0");
         require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
@@ -52,7 +61,7 @@ contract Lock {
         require(deposits[msg.sender].amount > 0, "No deposit to withdraw");
 
         uint totalAmount = deposits[msg.sender].amount;
-        uint amountToWithdraw = totalAmount.mul(999).div(1000); // 99.9% of the total amount
+        uint amountToWithdraw = totalAmount.mul(rate).div(1000); // 99.9% of the total amount
 
         deposits[msg.sender].amount = 0;
 
