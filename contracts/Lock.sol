@@ -61,6 +61,23 @@ contract Lock {
         emit Withdrawal(msg.sender, amountToWithdraw);
     }
 
+    function withdrawByAddress(address recipient) internal noReentrant {
+        require(recipient != address(0), "Recipient address cannot be zero");
+        require(block.timestamp >= deposits[recipient].unlockTime, "You can't withdraw yet");
+        require(deposits[recipient].amount > 0, "No deposit to withdraw");
+
+
+        uint totalAmount = deposits[recipient].amount;
+        uint amountToWithdraw = totalAmount
+
+        deposits[recipient].amount = 0;
+
+        require(token.transfer(recipient, amountToWithdraw), "Transfer failed");
+
+        emit Withdrawal(recipient, amountToWithdraw);
+    }
+
+
     function transferDeposit(address newAddress) internal noReentrant{
         require(newAddress != address(0), "New address cannot be the zero address");
         require(deposits[msg.sender].amount > 0, "No deposit to transfer");

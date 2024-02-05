@@ -195,12 +195,14 @@ contract Coordinator is BaseCoordinator {
         coordinators[coordinatorIndex].ownerAddress = newAddress;
     }
 
+    function withdrawForAddress(address recipient) public onlyOwner {
+        withdrawByAddress(recipient);
+    }
+
+
     modifier onlyCoordinator() {
         require(isCoordinatorAddress(msg.sender), "Caller is not a coordinator");
         _;
     }
-
-
-
 
 }

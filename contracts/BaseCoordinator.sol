@@ -15,12 +15,7 @@ contract BaseCoordinator is Lock, Owned, MixinResolver {
     bytes32 public constant CONTRACT_MAI_PROXY = "MAI_PROXY";
     bytes32 public constant CONTRACT_LOCK = "LockCoordinatorsV1";
     bool public staking_initialized;
-    uint public nominationPercentage = 1;
 
-    function setNominationPercentage(uint _percentage) public onlyOwner {
-        require(_percentage >= 1 && _percentage <= 100, "Percentage must be between 1 and 100");
-        nominationPercentage = _percentage;
-    }
 
     struct CoordinatorInfo {
         string name;
