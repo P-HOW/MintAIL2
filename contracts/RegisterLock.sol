@@ -19,7 +19,9 @@ contract RegisterLock {
     event DepositMade(address indexed depositor, uint amount, uint unlockTime);
     event Withdrawal(address indexed withdrawer, uint amount);
 
-    constructor(address _owner, uint _unlockTime) public {
+    constructor(address _tokenAddress, address _owner, uint _unlockTime) public {
+        require(_tokenAddress != address(0), "Token address cannot be zero");
+        token = IERC20(_tokenAddress); // Initialize the token
         owner = _owner;
         unlockTime = _unlockTime;
     }
