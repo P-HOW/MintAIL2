@@ -61,7 +61,7 @@ contract Lock {
         require(deposits[msg.sender].amount > 0, "No deposit to withdraw");
 
         uint totalAmount = deposits[msg.sender].amount;
-        uint amountToWithdraw = totalAmount.mul(rate).div(1000); // 99.9% of the total amount
+        uint amountToWithdraw = totalAmount.mul(rate).div(1000);
 
         deposits[msg.sender].amount = 0;
 
