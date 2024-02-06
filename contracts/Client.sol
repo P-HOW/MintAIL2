@@ -77,6 +77,15 @@ contract Client is RegisterLock, Owned {
         }
     }
 
+    function isClient(address _address) public view returns (bool) {
+        for (uint i = 0; i < clients.length; i++) {
+            if (clients[i].addr == _address) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function setMinimumRegister(uint _minimumRegister) public onlyOwner {
         minimumRegister = _minimumRegister;
     }
